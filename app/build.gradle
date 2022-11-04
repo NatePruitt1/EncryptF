@@ -25,6 +25,7 @@ test {
         showStandardStreams = true
         exceptionFormat "full"
     }
+    
 }
 
 application {

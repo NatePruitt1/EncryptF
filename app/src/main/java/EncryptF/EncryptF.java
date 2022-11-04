@@ -13,7 +13,7 @@ public class EncryptF {
 
     public static void main(String[] args) throws Exception{
         Scanner scanner = new Scanner(System.in);
-
+        
         //turn into a cli tool
         System.out.print("(e)ncryption or (d)ecryption: ");
         char option = scanner.nextLine().toLowerCase().charAt(0);

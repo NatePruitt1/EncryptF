@@ -1,9 +1,13 @@
 package EncryptF;
 
+import java.util.Arrays;
+
 import java.io.File;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedList;
 
 //get files, recusively(loop variant) get folder contents
 //store passwords and data in Data.crypt, and check them from a Data.crypt file
@@ -70,4 +74,130 @@ public class FileUtil {
         }
     }
 
+
+    //Saves a made file tree 
+    public static void saveFileTree(FileTree toSave, String savePath) throws Exception{
+        FileOutputStream f = new FileOutputStream(new File(savePath));
+        ObjectOutputStream o = new ObjectOutputStream(f);
+
+        o.writeObject(toSave);
+
+        f.close();
+        o.close();
+    }
+
+    //Loads a file tree from storage to memory
+    public static FileTree readFileTree(String savePath) throws Exception{
+        FileInputStream f = new FileInputStream(new File(savePath));
+        ObjectInputStream o = new ObjectInputStream(f);
+
+        return (FileTree) o.readObject();
+    }
+
+    //recursively create directories in a file tree
+    public static void recursiveCreateDir(FileTree rootTree, DirNode dirNode) throws Exception{
+        
+        String completePath = rootTree.getCompletePath(dirNode);
+
+        File rootFile = new File(completePath);
+
+        String[] subFiles = rootFile.list();
+
+        LinkedList<String> fileStack = new LinkedList<String>();
+        LinkedList<String> dirStack = new LinkedList<String>();
+
+        for(String fileName : subFiles){
+            File temp = new File(completePath + fileName);
+
+            if(temp.isDirectory()) dirStack.add(fileName);
+
+            else if(temp.isFile()) fileStack.add(fileName);
+
+        }
+
+        while(!fileStack.isEmpty()){
+            String fileStackPop = fileStack.removeLast();
+
+            File temp = new File(completePath + fileStackPop);
+
+            rootTree.insertFileNode(dirNode.getPath(), fileStackPop, Files.readAllBytes(temp.toPath()));
+        }
+
+        while(!dirStack.isEmpty()){
+            String dirStackPop = dirStack.removeLast();
+            
+            rootTree.insertDirNode(dirNode.getPath(), dirStackPop);
+            recursiveCreateDir(rootTree, rootTree.getDirNode(dirNode.getPath() + dirStackPop));
+        }
+    }
+
+    //create a file tree from a root folder
+    public static FileTree createTree(String rootDir) throws Exception{
+        FileTree f = new FileTree(rootDir);
+
+        File rootFile = new File(rootDir);
+        String[] subFiles = rootFile.list();
+
+        LinkedList<String> fileStack = new LinkedList<String>();
+        LinkedList<String> dirStack = new LinkedList<String>();
+
+        for(String fileName : subFiles){
+            File temp = new File(f.getCompletePath(f.root) + fileName);
+
+            if(temp.isDirectory()) dirStack.add(fileName);
+
+            else if(temp.isFile()) fileStack.add(fileName);
+
+        }
+
+        while(!fileStack.isEmpty()){
+            String fileStackPop = fileStack.removeLast();
+
+            File temp = new File(f.getCompletePath(f.root) + fileStackPop);
+
+            f.insertFileNode(f.root.getPath(), fileStackPop, Files.readAllBytes(temp.toPath()));
+        }
+
+        while(!dirStack.isEmpty()){
+            String dirStackPop = dirStack.removeLast();
+            
+            f.insertDirNode(f.root.getPath(), dirStackPop);
+            recursiveCreateDir(f, f.getDirNode(f.root.getPath() + dirStackPop));
+        }
+        
+        return f;
+    }
+
+    //Deletes all files referenced in a file tree to hide thier contents after encryption.
+    public static void deleteFileTreeContents(FileTree toDelete) throws Exception{
+        //will require a recursive call too folders, who must delete their contents, call the function on their subdirs, and then delete themselves.
+        deleteDirRecursive(toDelete, toDelete.root);
+    }
+
+    public static void deleteDirRecursive(FileTree f, DirNode dirNode) throws Exception{
+        //get all files from a dirnode, delete them, then call this function on the sub-dirs of dirNode
+        String absPath = f.getCompletePath(dirNode);
+        for(FileNode fN : dirNode.fileChildren){
+            File toDel = new File(absPath + fN.fileName);
+            Files.write(toDel.toPath(), "".getBytes());
+            toDel.delete();
+        }
+
+        for(DirNode dN : dirNode.dirChildren){
+            deleteDirRecursive(f, dN);
+        }
+        //finally, delete the directory associated with dirNode
+        File thisFolder = new File(absPath);
+        thisFolder.delete();
+    }
+
+    public static void createFileTreeContents(FileTree toCreate){
+
+    }
+
+    public static void createDirNodeContents(FileTree f, DirNode dN) throws Exception {
+        String absPath = f.getCompletePath(dN);
+        Path rootPath = Paths.get(absPath);
+        Files.createDirectory(rootPath);
+    }
 }
